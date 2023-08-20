@@ -17,7 +17,7 @@ BorderNode *start_new_tree(const Key &key, Value *value) {
     // 現在のスライスが最後のスライスなら
     if (1 <= cursor.size && cursor.size <= 7) {
         root->setKeyLen(0, cursor.size);
-        root->setKeySlice(0, cursor.size);
+        root->setKeySlice(0, cursor.slice);
         root->setLV(0, LinkOrValue(value));
     } else {
         assert(cursor.size == 8);
