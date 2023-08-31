@@ -7,9 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Threads REQUIRED)
 
-file(GLOB MASSTREE_SOURCES
-    "src/main.cpp"
-)
+file(GLOB MASSTREE_SOURCES src/*.cpp)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
@@ -29,7 +27,9 @@ FetchContent_MakeAvailable(googletest)
 # テスト用の実行ファイルの設定
 enable_testing()
 
-file(GLOB_RECURSE TEST_SOURCES test/*.cpp)
+file(GLOB_RECURSE TEST_SOURCES test/*.cpp src/*.cpp)
+# src/main.cpp を除外
+list(REMOVE_ITEM TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 add_executable(tests ${TEST_SOURCES})
 
 target_link_libraries(tests gtest_main)
