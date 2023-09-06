@@ -27,8 +27,8 @@ TEST(PermutationTest, setNumKeys){
 }
 
 TEST(PermutationTest, getKeyIndex) {
-	Permutation p{};
 	// Permutationの特定のindexに対応するkeysIndexを取得する
+	Permutation p{};
 	// index 	 : Permutation自体のindex
 	// keysIndex : keyのindex
 	// [ 3| 1| 2|__|__|__|__|__|__|__|__|__|__|__|__| 3]
