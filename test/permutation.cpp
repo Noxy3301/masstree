@@ -28,16 +28,16 @@ TEST(PermutationTest, setNumKeys){
 
 TEST(PermutationTest, getKeyIndex) {
 	Permutation p{};
-	// Permutationの特定のindexに対応するpermutationIndexを取得する
-	// index 			: Permutation自体のindex
-	// permutationIndex : keyのindex
+	// Permutationの特定のindexに対応するkeysIndexを取得する
+	// index 	 : Permutation自体のindex
+	// keysIndex : keyのindex
 	// [ 3| 1| 2|__|__|__|__|__|__|__|__|__|__|__|__| 3]
 	p.body = 0b0011'0001'0010'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0011;
 	EXPECT_EQ(p.getNumKeys(), 3);
 	EXPECT_EQ(p.getKeyIndex(0), 3);
 	EXPECT_EQ(p.getKeyIndex(1), 1);
 	EXPECT_EQ(p.getKeyIndex(2), 2);
-	// setKeyIndexで所定の位置にpermutationIndexをセットする
+	// setKeyIndexで所定の位置にkeysIndexをセットする
 	p.setKeyIndex(1, 4);
 	p.setKeyIndex(2, 1);
 	// [ 3| 4| 1|__|__|__|__|__|__|__|__|__|__|__|__| 3]
@@ -74,7 +74,7 @@ TEST(PermutationTest, searchLinkOrValueWithIndex) {
 }
 
 TEST(PermutationTest, insert) {
-	// Permutationの(index:3)に(permutationIndex:2)をinsertする
+	// Permutationの(index:3)に(keysIndex:2)をinsertする
 	Permutation permutation = Permutation::from({3, 4, 5, 0, 1});
 	// [ 3| 4| 5| 0| 1|__|__|__|__|__|__|__|__|__|__| 5]
 	permutation.insert(3, 2);
