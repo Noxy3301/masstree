@@ -122,5 +122,14 @@ struct Permutation {
         return permutation;
     }
 
-    // static Permutation from(const std::vector<size_t> &vec) {}
+    // Permutationにvecの中身をセットする
+    // NOTE: test/sample.hで使ってる
+    static Permutation from(const std::vector<size_t> &vec) {
+        Permutation p{};
+        for (size_t i = 0; i < vec.size(); i++) {
+            p.setKeyIndex(i, vec[i]);
+        }
+        p.setNumKeys(vec.size());
+        return p;
+    }
 };
