@@ -2,6 +2,16 @@
 
 #include "../src/include/masstree_node.h"
 
+static constexpr uint64_t ONE   = 0x1111111111111111;
+static constexpr uint64_t TWO   = 0x2222222222222222;
+static constexpr uint64_t THREE = 0x3333333333333333;
+static constexpr uint64_t FOUR  = 0x4444444444444444;
+static constexpr uint64_t FIVE  = 0x5555555555555555;
+static constexpr uint64_t SIX   = 0x6666666666666666;
+static constexpr uint64_t SEVEN = 0x7777777777777777;
+static constexpr uint64_t EIGHT = 0x8888888888888888;
+static constexpr uint64_t NINE  = 0x9999999999999999;
+
 static void makeSampleBorderNode(BorderNode *node) {
     node->setKeySlice(0, 2);
     node->setKeyLen(0, 5);
