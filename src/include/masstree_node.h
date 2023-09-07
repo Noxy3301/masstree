@@ -22,33 +22,31 @@ class Node {
 
         // Node() = default;
         Node() : parent(nullptr), upperLayer(nullptr) {};
-
-        // CHECK: このコンストラクタがどういう意味で書かれているのかわからん、ミス防止ってこと？
+        // コピーコンストラクタと代入演算子の削除
         Node(const Node& other) = delete;
         Node &operator=(const Node& other) = delete;
         Node(Node&& other) = delete;
         Node &operator=(Node&& other) = delete;
 
-        // Stableな状態((version.inserting || version.splitting) == 0)のversionを取得する
+        // 挿入や分割中でない安定したバージョン((version.inserting || version.splitting) == 0)を取得する
         Version stableVersion() const {
             Version v = getVersion();
             while (v.inserting || v.splitting) v = getVersion();
             return v;
         }
-
+        // ロックを取得する
         void lock() {
             Version expected, desired;
-
             for (;;) {
                 expected = getVersion();
-                if (!expected.locked) { // lock取れる場合
+                if (!expected.locked) { // ロックが取れる場合
                     desired = expected;
                     desired.locked = true;
                     if (version.compare_exchange_weak(expected, desired)) return;
                 }
             }
         }
-
+        // ロックを解除する
         void unlock() {
             Version v = getVersion();
             assert(v.locked && !(v.inserting && v.splitting));
@@ -63,7 +61,7 @@ class Node {
 
             setVersion(v);
         }
-
+        // versionの各フィールドのsetterとgetter
         inline void setInserting(bool inserting) {
             Version v = getVersion();
             assert(v.locked);
@@ -156,7 +154,7 @@ class Node {
             return parent.load(std::memory_order_acquire);
         }
 
-        // ParentのLockを取得する
+        // 親ノードのロックを取得する
         InteriorNode *lockedParent() const {
         RETRY:
             Node *p = reinterpret_cast<Node *>(getParent());
@@ -169,7 +167,7 @@ class Node {
             }
             return reinterpret_cast<InteriorNode *>(p);
         }
-        // UpperLayerのLockを取得する
+        // UpperLayer(上層ノード)のロックを取得する
         BorderNode *lockedUpperNode() const {
         RETRY:
             Node *p = reinterpret_cast<Node *>(getUpperLayer());
@@ -182,7 +180,7 @@ class Node {
             }
             return reinterpret_cast<BorderNode *>(p);
         }
-
+        // ノードがロックされているか確認する
         inline bool isLocked() const {
             Version version = getVersion();
             return version.locked;
@@ -201,7 +199,7 @@ class Node {
 class InteriorNode : public Node {
     public:
         InteriorNode() : n_keys(0) {}
-        
+        // 指定されたスライスを持つ子ノードを検索する
         Node *findChild(uint64_t slice) {
             uint8_t num_keys = getNumKeys();
             for (size_t i = 0; i < num_keys; i++) {
@@ -209,17 +207,18 @@ class InteriorNode : public Node {
             }
             return getChild(num_keys);
         }
-
+        // ノードが満杯でないか確認
         inline bool isNotFull() const {
             return (getNumKeys() != ORDER - 1);
         }
-
+        // ノードが満杯か確認
         inline bool isFull() const {
             return !isNotFull();
         }
         // bool debug_has_skip
         // bool printNode
 
+        // 指定された子ノードのインデックスを検索
         size_t findChildIndex(Node *arg_child) const {
             size_t index = 0;
             while (index <= getNumKeys() && (getChild(index) != arg_child)) index++;
@@ -278,18 +277,20 @@ class InteriorNode : public Node {
     private:
         std::atomic<uint8_t> n_keys = 0;
         std::array<std::atomic<uint64_t>, ORDER - 1> key_slice = {};
-        std::array<std::atomic<Node *>, ORDER> child = {};
-
+        std::array<std::atomic<Node *>, ORDER> child = {}; 
 };
 
+// LinkOrValueは、ノードへのリンクまたは値を保持するための共用体
+// これにより、同じメモリ領域を使ってNodeへのポインタかValueへのポインタのどちらかを保持することができる
+// これは、特定のキーに対して次のレイヤーのノードへのリンクが必要なのか、それとも実際の値へのリンクが必要なのかを効率的に管理するために使用される
 union LinkOrValue {
     LinkOrValue() = default;
 
     explicit LinkOrValue(Node *next) : next_layer(next) {}
     explicit LinkOrValue(Value *value_) : value(value_) {}
 
-    Node *next_layer = nullptr;
-    Value *value;
+    Node *next_layer = nullptr; // 次のレイヤーのノードへのポインタ
+    Value *value;               // 実際の値へのポインタ
 };
 
 // vectorの先頭要素を消す
@@ -298,19 +299,18 @@ static void pop_front(std::vector<T> &v) {
     if (!v.empty()) v.erase(v.begin());
 }
 
-/*
- * BigSuffixは複数のスライス(8byte)として保存される
- * Suffixの長さ、現在のスライスの取得、Suffixが次のSuffixを持っているかをチェックする
- * Suffixの長さが8byteよりも大きいときに使う
- */
+// BigSuffixは、Suffixが8byteよりも大きい場合に使用されるクラス
+// 複数のスライス(8byteごと)としてSuffixを保存し、Suffixの長さや現在のスライスの情報、次のSuffixが存在するかどうかを管理する
 class BigSuffix {
 public:
     BigSuffix() = default;
+    // コピーコンストラクタ
     BigSuffix(const BigSuffix &other) : slices(other.slices), lastSliceSize(other.lastSliceSize) {}
+    // コピーオペレータ、ムーブコンストラクタ、ムーブオペレータの削除
     BigSuffix &operator=(const BigSuffix &other) = delete;
     BigSuffix(BigSuffix &&other) = delete;
-    BigSuffix &operator=(const BigSuffix &&other) = delete;
-
+    BigSuffix &operator=(BigSuffix &&other) = delete;
+    // slicesとlastSliceSizeを指定して初期化するコンストラクタ
     BigSuffix(std::vector<uint64_t> &&slices_, size_t lastSliceSize_) : slices(std::move(slices_)), lastSliceSize(lastSliceSize_) {}
 
     // 現在のスライスを取得する(最後のスライスならそのスライスだけ、違うなら8byte)
@@ -323,30 +323,29 @@ public:
             return SliceWithSize(slices[0], lastSliceSize);
         }
     }
-
+    // 残りのスライスの長さを返す
     size_t remainLength() {
         std::lock_guard<std::mutex> lock(suffixMutex);
         return (slices.size() - 1) * 8 + lastSliceSize;
     }
-
-    // slicesが2より大きいなら次のスライスがある(slicesをpop_frontしていくのでここで気づける)
+    // 次のスライスが存在するかを返す、slicesが2より大きいなら次のスライスがある(slicesをpop_frontしていくのでここで気づける)
     bool hasNext() {
         std::lock_guard<std::mutex> lock(suffixMutex);
         return slices.size() >= 2;
     }
-
+    // 次のスライスに移動する
     void next() {
         assert(hasNext());
         pop_front(slices);
     }
-
+    // スライスの先頭に新しいスライスを追加する
     // CHECK: これ何に使うんだ？
     void insertTop(uint64_t slice) {
         std::lock_guard<std::mutex> lock(suffixMutex);
         slices.insert(slices.begin(), slice);
     }
 
-    // keyとsuffixが一致するか
+    // 指定したキーとこのSuffixが一致するかを確認する
     bool isSame(const Key &key, size_t from) {
         if (key.remainLength(from) != this->remainLength()) return false;
         std::lock_guard<std::mutex> lock(suffixMutex);
@@ -356,7 +355,7 @@ public:
         return true;
     }
 
-    // 指定したkeyと開始位置から新しいBigSuffixを作成する
+    // 指定したキーと開始位置から新しいBigSuffixを作成
     static BigSuffix *from(const Key &key, size_t from) {
         std::vector<uint64_t> temp{};
         for(size_t i = from; i < key.slices.size(); i++) {
@@ -371,56 +370,54 @@ private:
     const size_t lastSliceSize = 0;
 };
 
-/*
- * KeySuffixはBorderNode内全てのkeyのSuffixへの参照を一元管理する
- */
+// KeySuffixはBorderNode内のすべてのkeyのSuffixへの参照を一元管理する
+// 各SuffixはBigSuffixオブジェクトへのポインタとして保持される
 class KeySuffix {
 public:
     KeySuffix() = default;
     
-    // fromからのsuffixを取得してBigSuffixにコピーする
+    // 指定されたインデックス位置に、指定されたkeyから取得したSuffixをセットする
     inline void set(size_t i, const Key &key, size_t from) {
         // storeRelease(suffixes[i], BigSuffix::from(key, from));   // TODO: wrapperの作成
         suffixes[i].store(BigSuffix::from(key, from), std::memory_order_release);
     }
-
-    // BigSuffixへのポインタを保存する
+    // 指定されたインデックス位置にBigSuffixへのポインタをセットする
     inline void set(size_t i, BigSuffix *const &ptr) {
         // storeRelease(suffixes[i], ptr); // TODO: wrapperの作成
         suffixes[i].store(ptr, std::memory_order_release);
     }
-
+    // 指定されたインデックスのBigSuffixへのポインタを取得する
     inline BigSuffix *get(size_t i) const {
         // loadAcquire(suffixes[i]);    // TODO: wrapperの作成
         return suffixes[i].load(std::memory_order_acquire);
     }
-
-    // suffixes[i]のreferenceを外す
+    // 指定されたインデックス(=suffixes[i])のSuffixへの参照を外す
     void unreferenced(size_t i) {
         assert(get(i) != nullptr);
         set(i, nullptr);
     }
-
+    // 指定されたインデックスのSuffixを削除する
     void delete_ptr(size_t i) {
         BigSuffix *ptr = get(i);
         assert(ptr != nullptr);
         delete ptr;
         set(i, nullptr);
     }
-
+    // すべてのSuffixを削除する
     void delete_all() {
         for (size_t i = 0; i < Node::ORDER - 1; i++) {
             BigSuffix *ptr = get(i);
             if (ptr != nullptr) delete_ptr(i);
         }
     }
-
-    // suffixesをリセットする、splitの時とかに使う
+    // suffixes配列をリセットする(全てnullptrで初期化する)、主にsplit操作などで使用される
     void reset() {
         std::fill(suffixes.begin(), suffixes.end(), nullptr);
     }
 
 private:
+    // BigSuffixへのポインタを保持する配列
+    // BorderNode内のすべてのkeyのSuffixを一元管理するためのデータ構造
     std::array<std::atomic<BigSuffix*>, Node::ORDER - 1> suffixes = {};
 };
 
@@ -433,7 +430,7 @@ enum SearchResult: uint8_t {
 
 class BorderNode : public Node {
     public:
-        // CHECK: これ何に使ってるんだっけ
+        // キーの長さや状態を示すための特殊な値
         static constexpr uint8_t key_len_layer = 255;
         static constexpr uint8_t key_len_unstable = 254;
         static constexpr uint8_t key_len_has_suffix = 9;
@@ -444,7 +441,7 @@ class BorderNode : public Node {
 
         ~BorderNode() {
             for (size_t i = 0; i < ORDER - 1; i++) {
-                // assert()
+                // TODO: assert()
             }
         }
 
@@ -457,13 +454,15 @@ class BorderNode : public Node {
         // BorderNodeの中からkeyに対応するLink or Valueを取得する、ついでにkeyのindexも返す
         std::tuple<SearchResult, LinkOrValue, size_t> searchLinkOrValueWithIndex(const Key &key) {
             /*
-             * 次のスライスがない場合(現在のスライスが最後)はkey sliceの長さは1~8
-             * 次のスライスがある場合はkey sliceの長さは8
-             * key_lenが8の場合、残りのkey sliceは1つのみであり次のkey sliceはkey suffixに入っているのでそこを探す
-             * 
-             * key_lenがLAYERを表す場合は次のLayerを探す
-             * key_lenがUNSTABLEを表す場合はUNSTABLEを返す
-             * それ以外はNOTFOUNDを返す
+             * 1. キーの次のスライスがない場合は、現在のスライスが最後のものとみなされ、key sliceの長さは1~8になる
+             *    このケースでは、現在のレイヤーにValueが存在するはず
+             * 2. キーの次のスライスがある場合、key sliceの長さは常に8
+             *    このケースでは、現在のレイヤーにはValueが存在せず、次のレイヤーへのLinkを探す必要がある
+             * 3. `key_len`が8の場合、残りのkey sliceは1つのみで、次のkey sliceはkey suffixに格納されている
+             *    この場合、suffixの中を検索する
+             * 4. `key_len`がLAYERを示す場合、次のLayerを検索する
+             * 5. `key_len`がUNSTABLEを示す場合、キーの状態は不安定であるとみなされ、UNSTABLEを返す
+             * 6. 上記のいずれのケースも該当しない場合、キーは見つからなかったとみなされ、NOTFOUNDを返す
              */
             SliceWithSize current = key.getCurrentSlice();
             Permutation permutation = getPermutation();
@@ -498,7 +497,7 @@ class BorderNode : public Node {
             }
             return std::make_tuple(NOTFOUND, LinkOrValue{}, 0);
         }
-
+        // BorderNode内のキーの中で、最小のキーを返す。
         uint64_t lowestKey() const {
             Permutation permutation = getPermutation();
             return getKeySlice(permutation(0));
@@ -506,6 +505,8 @@ class BorderNode : public Node {
 
         // void connectPrevAndNext() const{}
 
+        // 新しいキーを挿入するための適切な位置を検索する
+        // 返り値は、挿入する位置と、その位置が再利用されるスロットであるかどうかのブール値
         std::pair<size_t, bool> insertPoint() const {
             assert(getPermutation().isNotFull());
             for (size_t i = 0; i < ORDER - 1; i++) {
@@ -635,13 +636,14 @@ class BorderNode : public Node {
 
 
     private:
-        std::array<std::atomic<uint8_t>, ORDER - 1> key_len = {};   // keyの長さは255まで
-        std::atomic<Permutation> permutation;   // CHECK: permutation::sizeOne()をここで呼ぶことはできない(コピー代入をサポートしてないから)からborderNodeのコンストラクタでpermutationのコンストラクタを呼び出す
-        std::array<std::atomic<uint64_t>, ORDER - 1> key_slice = {};
-        std::array<std::atomic<LinkOrValue>, ORDER - 1> lv = {};    // Link or Value
-        std::atomic<BorderNode*> next{nullptr};
-        std::atomic<BorderNode*> prev{nullptr};
-        KeySuffix key_suffixes = {};
+        std::array<std::atomic<uint8_t>, ORDER - 1> key_len = {};       // 各キーの長さを保持する配列、キーの長さは255まで
+        // CHECK: permutation::sizeOne()をここで呼ぶことはできない(コピー代入をサポートしてないから)からborderNodeのコンストラクタでpermutationのコンストラクタを呼び出す
+        std::atomic<Permutation> permutation;                           // BorderNode内のキーの順序を管理するためのPermutationオブジェクト
+        std::array<std::atomic<uint64_t>, ORDER - 1> key_slice = {};    // キーのスライスを保持する配列
+        std::array<std::atomic<LinkOrValue>, ORDER - 1> lv = {};        // キーに関連付けられたLinkまたはValueを保持する配列
+        std::atomic<BorderNode*> next{nullptr};                         // 隣接するBorderNodeへのリンク(next)
+        std::atomic<BorderNode*> prev{nullptr};                         // 隣接するBorderNodeへのリンク(previous)
+        KeySuffix key_suffixes = {};                                    // BorderNode内のすべてのキーのSuffixを一元管理するKeySuffixオブジェクト
 };
 
 std::pair<BorderNode*, Version> findBorder(Node *root, const Key &key);

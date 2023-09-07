@@ -46,7 +46,7 @@ TEST(KeyTest, stringAndUint64tConversion) {
     // std::stringからkeyの形({slice, ...}, lastSliceSize)に変換する
     std::string str = "higaisya dura no tiwawa";
     std::pair<std::vector<uint64_t>, size_t> slices_lastSliceSize = stringToUint64t(str);
-    std::cout << GTEST_COUT_INFO << " {";
+    std::cout << GTEST_COUT_INFO << "{";
     for (size_t i = 0; i < slices_lastSliceSize.first.size(); i++) {
         std::cout << slices_lastSliceSize.first[i] << (i != slices_lastSliceSize.first.size() - 1 ? ", " : "");
     } std::cout << "}, " << "lastSliceSize = " << slices_lastSliceSize.second << std::endl;
