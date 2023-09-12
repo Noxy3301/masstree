@@ -15,14 +15,14 @@ BorderNode *start_new_tree(const Key &key, Value *value) {
         assert(cursor.size == 8);
         if (key.hasNext()) {
             // keyの長さが9byte以上なのでsuffixを持たせる
-            root->setKeySlice(0, cursor.size);
+            root->setKeySlice(0, cursor.slice);
             root->setKeyLen(0, BorderNode::key_len_has_suffix);
             root->setLV(0, LinkOrValue(value));
             root->getKeySuffixes().set(0, key, 1);
         } else {
             // keyの長さが丁度8byte
             root->setKeyLen(0, 8);
-            root->setKeySlice(0, cursor.size);
+            root->setKeySlice(0, cursor.slice);
             root->setLV(0, LinkOrValue(value));
         }
     }
