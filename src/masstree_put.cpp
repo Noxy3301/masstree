@@ -30,7 +30,7 @@ BorderNode *start_new_tree(const Key &key, Value *value) {
 }
 
 // BorderNodeにkeyをinsertするときに既存のkeyと競合が発生するかを確認する
-// 問題がある場合はkeysIndex、問題がない場合は-1が返ってくる(std::optionalは使い方わからん；；)
+// 問題がある場合はtrueIndex、問題がない場合は-1が返ってくる(std::optionalは使い方わからん；；)
 // NOTE: ssize_tの関係で異常がない場合に-1が返ってくるので注意
 static ssize_t check_break_invariant(BorderNode *const borderNode, const Key &key) {
     assert(borderNode->isLocked());
@@ -38,12 +38,12 @@ static ssize_t check_break_invariant(BorderNode *const borderNode, const Key &ke
     if (key.hasNext()) {
         SliceWithSize cursor = key.getCurrentSlice();
         for (size_t i = 0; i < permutation.getNumKeys(); i++) {
-            uint8_t keysIndex = permutation(i);
+            uint8_t trueIndex = permutation(i);
             // キーがsuffix or 下位レイヤへのポインタを持っている && 指定したkeyがborderNodeにあるか
-            if ((borderNode->getKeyLen(keysIndex) == BorderNode::key_len_has_suffix || 
-                 borderNode->getKeyLen(keysIndex) == BorderNode::key_len_layer) && 
-                 borderNode->getKeySlice(keysIndex) == cursor.slice) {
-                return keysIndex;
+            if ((borderNode->getKeyLen(trueIndex) == BorderNode::key_len_has_suffix || 
+                 borderNode->getKeyLen(trueIndex) == BorderNode::key_len_layer) && 
+                 borderNode->getKeySlice(trueIndex) == cursor.slice) {
+                return trueIndex;
             }
         }
     }

@@ -475,27 +475,27 @@ class BorderNode : public Node {
 
             if (!key.hasNext()) {   // 現在のkeyのスライスが最後の場合(current layerにValueがあるはず)
                 for (size_t i = 0; i < permutation.getNumKeys(); i++) {
-                    uint8_t keysIndex = permutation(i);
-                    if (getKeySlice(keysIndex) == current.slice && getKeyLen(keysIndex) == current.size) {
-                        return std::make_tuple(VALUE, getLV(keysIndex), keysIndex);
+                    uint8_t trueIndex = permutation(i);
+                    if (getKeySlice(trueIndex) == current.slice && getKeyLen(trueIndex) == current.size) {
+                        return std::make_tuple(VALUE, getLV(trueIndex), trueIndex);
                     }
                 }
             } else {    // 次のスライスがある場合(current layerにはvalueがないので下位ノードを辿るためのLinkを探す)
                 for (size_t i = 0; i < permutation.getNumKeys(); i++) {
-                    uint8_t keysIndex = permutation(i);
-                    if (getKeySlice(keysIndex) == current.slice) {
-                        if (getKeyLen(keysIndex) == BorderNode::key_len_has_suffix) {
+                    uint8_t trueIndex = permutation(i);
+                    if (getKeySlice(trueIndex) == current.slice) {
+                        if (getKeyLen(trueIndex) == BorderNode::key_len_has_suffix) {
                             // suffixの中を見る
-                            BigSuffix *suffix = getKeySuffixes().get(keysIndex);
+                            BigSuffix *suffix = getKeySuffixes().get(trueIndex);
                             if (suffix != nullptr && suffix->isSame(key, key.cursor + 1)) {
-                                return std::make_tuple(VALUE, getLV(keysIndex), keysIndex);
+                                return std::make_tuple(VALUE, getLV(trueIndex), trueIndex);
                             }
                         }
 
-                        if (getKeyLen(keysIndex) == BorderNode::key_len_layer) {
-                            return std::make_tuple(LAYER, getLV(keysIndex), keysIndex);
+                        if (getKeyLen(trueIndex) == BorderNode::key_len_layer) {
+                            return std::make_tuple(LAYER, getLV(trueIndex), trueIndex);
                         }
-                        if (getKeyLen(keysIndex) == BorderNode::key_len_unstable) {
+                        if (getKeyLen(trueIndex) == BorderNode::key_len_unstable) {
                             return std::make_tuple(UNSTABLE, LinkOrValue{}, 0);
                         }
                     }
