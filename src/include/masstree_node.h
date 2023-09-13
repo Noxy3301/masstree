@@ -518,7 +518,8 @@ class BorderNode : public Node {
             for (size_t i = 0; i < ORDER - 1; i++) {
                 uint8_t len = getKeyLen(i);
                 if (len == 0) return std::make_pair(i, false);
-                if (10 <= len && len <= 18) return std::make_pair(i, true); // CHECK: 10~18ってなんで？removed slotが再利用される場合はこっちに来るらしいんだけど(その場合insert側はv_insertを更新するらしい)
+                // markKeyRemovedで、assert(1 <= len and len <= key_len_has_suffix) -> setKeyLen(i, len + 9)を行うから、(10 <= len && len <= 18)の範囲である場合は再利用として扱う(v_insertを更新する必要あり)
+                if (10 <= len && len <= 18) return std::make_pair(i, true);
             }
             assert(false);
         }
