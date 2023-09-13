@@ -216,7 +216,13 @@ class InteriorNode : public Node {
             return !isNotFull();
         }
         // bool debug_has_skip
-        // bool printNode
+        void printNode() const {
+            printf("/");
+            for(size_t i = 0; i < ORDER - 1; ++i){
+                printf("%lu/", getKeySlice(i));
+            }
+            printf("\\\n");
+        }
 
         // 指定された子ノードのインデックスを検索
         size_t findChildIndex(Node *arg_child) const {
@@ -517,7 +523,13 @@ class BorderNode : public Node {
             assert(false);
         }
 
-        // void printNode() const{}
+        void printNode() const {
+        printf("|");
+        for(size_t i = 0; i < ORDER - 1; ++i){
+            printf("%lu|", getKeySlice(i));
+        }
+        printf("\n");
+        }
 
         // splitをするとき簡略化のためにsortを行う(BorderNode, permutationどっちも)
         void sort() {
@@ -591,7 +603,7 @@ class BorderNode : public Node {
             // return loadAcquire(lv[i]);   // TODO: wrapperの作成
             return lv[i].load(std::memory_order_acquire); 
         }
-        // lv[i]にlv_をセットする
+        // lv[i]に指定されたLinkOrValueをセットする
         inline void setLV(size_t i, const LinkOrValue &lv_) {
             lv[i].store(lv_, std::memory_order_release);    // TODO: wrapperの作成
         }
