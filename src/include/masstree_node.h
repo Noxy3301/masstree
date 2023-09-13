@@ -523,13 +523,7 @@ class BorderNode : public Node {
             assert(false);
         }
 
-        void printNode() const {
-        printf("|");
-        for(size_t i = 0; i < ORDER - 1; ++i){
-            printf("%lu|", getKeySlice(i));
-        }
-        printf("\n");
-        }
+        // void printNode() const{}
 
         // splitをするとき簡略化のためにsortを行う(BorderNode, permutationどっちも)
         void sort() {
