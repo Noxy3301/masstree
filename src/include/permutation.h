@@ -6,9 +6,9 @@
 
 struct Permutation {
     /*
-    |             index |   0  |   1  |   2  |   3  |   4  |   5  |   6  |   7  |   8  |   9  |  10  |  11  |  12  |  13  |  14  | keys |
-    |-------------------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+------+
-    | body(key's index) | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ |
+    | permutationIndex |   0  |   1  |   2  |   3  |   4  |   5  |   6  |   7  |   8  |   9  |  10  |  11  |  12  |  13  |  14  | keys |
+    ├──────────────────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+    |        trueIndex | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ | ____ |
     */
     uint64_t body = 0;
 
@@ -41,7 +41,7 @@ struct Permutation {
         setNumKeys(getNumKeys() - 1);
     }
     
-    // 指定したindexの"keyのindex"を取得する
+    // 指定したpermutationIndexのtrueIndexを取得する
     inline uint8_t getKeyIndex(size_t index) const {
         assert(0 <= index && index < getNumKeys());
         uint64_t Rshift = body >> (15 - index)*4;   // 欲しいindexの位置まで右シフト
@@ -50,37 +50,37 @@ struct Permutation {
         return result;
     }
 
-    // 指定したindexの"keyのindex"をセットする
-    inline void setKeyIndex(size_t index, size_t keysIndex) {
-        assert(0 <= index && index <= 14);
-        assert(0 <= keysIndex && keysIndex <= 14);
-        uint64_t left   = index == 0 ? 0 : (body >> (16 - index)*4) << (16 - index)*4;  // Rshift -> Lshiftで左側の欲しい部分だけ取得
-        uint64_t right  = body & ((1LLU << ((15 - index)*4)) - 1);                      // 1LLUをLshiftして-1することでマスクを作ってAND(ex. 0b0100 -> 0b0011)
-        uint64_t middle = keysIndex * (1LLU << (15 - index)*4);                         // 1LLUを"keyのindex"の位置までLshiftして、keysIndexを乗算することで指定した位置にkeysIndexを設定
+    // 指定したpermutationIndexのtrueIndexをセットする
+    inline void setKeyIndex(size_t permutationIndex, size_t trueIndex) {
+        assert(0 <= permutationIndex && permutationIndex <= 14);
+        assert(0 <= trueIndex && trueIndex <= 14);
+        uint64_t left   = permutationIndex == 0 ? 0 : (body >> (16 - permutationIndex)*4) << (16 - permutationIndex)*4; // Rshift -> Lshiftで左側の欲しい部分だけ取得
+        uint64_t right  = body & ((1LLU << ((15 - permutationIndex)*4)) - 1);                                           // 1LLUをLshiftして-1することでマスクを作ってAND(ex. 0b0100 -> 0b0011)
+        uint64_t middle = trueIndex * (1LLU << (15 - permutationIndex)*4);                                              // 1LLUをセットしたいtrueIndexの位置までLshiftして、trueIndexを乗算することで指定した位置にtrueIndexを設定
         body = left | middle | right;
-        assert(0 <= ((body >> (15 - index)*4) & 0b1111LLU) && ((body >> (15 - index)*4) & 0b1111LLU) <= 14);    // 0 <= keys <= 14
+        assert(0 <= ((body >> (15 - permutationIndex)*4) & 0b1111LLU) && ((body >> (15 - permutationIndex)*4) & 0b1111LLU) <= 14);    // 0 <= permutationIndex <= 14
     }
 
-    // 指定したindexの"keyのindex"を消す
-    // CHECK: Masstreeってkeyのindexを消した後左シフトするんだっけ？あとpermutationの操作はinsertingとかのdirtyフラグがたってるからatomicに処理する必要がないってこと？
-    inline void removeIndex(uint8_t keysIndex) {
-        // keysIndexで指定された"keyのindex"を探して消去する
-        uint8_t removed_keysIndex_index;
+    // 指定したpermutationIndexのtrueIndexを消す
+    // CHECK: MasstreeってtrueIndexを消した後左シフトするんだっけ？あとpermutationの操作はinsertingとかのdirtyフラグがたってるからatomicに処理する必要がないってこと？
+    inline void removeIndex(uint8_t trueIndex) {
+        // 指定されたtrueIndexを探して消去する
+        uint8_t permutationIndex;
         for (uint8_t i = 0; i < getNumKeys(); i++) {
-            if (getKeyIndex(i) == keysIndex) {
-                removed_keysIndex_index = i;
+            if (getKeyIndex(i) == trueIndex) {
+                permutationIndex = i;
                 break;
             }
         }
-        // removed_keysIndex_indexより後ろのkeysIndexを1つ左シフトする、ケツのやつは重複するけどdecrementNumKeys()するから無視される
-        for (uint8_t target = removed_keysIndex_index; target + 1 <= getNumKeys() - 1; target++) {
+        // permutationIndexより後ろのkeysIndexを1つ左シフトする、ケツのやつは重複するけどdecrementNumKeys()するから無視される
+        for (uint8_t target = permutationIndex; target + 1 <= getNumKeys() - 1; target++) {
             setKeyIndex(target, getKeyIndex(target + 1));
         }
         decrementNumKeys();
     }
 
     // Equivalent to calling p.getKeyIndex(2);
-    // 指定したindexの"keyのindex"を取得する
+    // 指定したpermutationIndexのtrueIndexを取得する
     uint8_t operator() (size_t i) const {
         return getKeyIndex(i);
     }
@@ -94,14 +94,13 @@ struct Permutation {
         return !isNotFull();
     }
 
-    // CHECK: indexとkeysIndexあってるか？
-    void insert(size_t index, size_t keysIndex) {
-        // index(keysIndexを入れたいindex)のためにそれより後を右シフト
-        for (size_t i = getNumKeys(); i > index; i--) {
+    void insert(size_t permutationIndex, size_t trueIndex) {
+        // permutationIndexで指定されたpermutation slotを開けるために、それより後を右シフト
+        for (size_t i = getNumKeys(); i > permutationIndex; i--) {
             setKeyIndex(i, getKeyIndex(i - 1));
         }
         // 突っ込む
-        setKeyIndex(index, keysIndex);
+        setKeyIndex(permutationIndex, trueIndex);
         incrementNumKeys();
     }
 
