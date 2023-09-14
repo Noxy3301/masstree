@@ -32,7 +32,7 @@ BorderNode *start_new_tree(const Key &key, Value *value) {
 // BorderNodeにkeyをinsertするときに既存のkeyと競合が発生するかを確認する
 // 問題がある場合はtrueIndex、問題がない場合は-1が返ってくる(std::optionalは使い方わからん；；)
 // NOTE: ssize_tの関係で異常がない場合に-1が返ってくるので注意
-static ssize_t check_break_invariant(BorderNode *const borderNode, const Key &key) {
+ssize_t check_break_invariant(BorderNode *const borderNode, const Key &key) {
     assert(borderNode->isLocked());
     Permutation permutation = borderNode->getPermutation();
     if (key.hasNext()) {
@@ -51,7 +51,7 @@ static ssize_t check_break_invariant(BorderNode *const borderNode, const Key &ke
 }
 
 // invariantを検知した時の処理, §4.6.3
-static void handle_break_invariant(BorderNode *node, Key &key, size_t old_index, GarbageCollector &gc) {
+void handle_break_invariant(BorderNode *node, Key &key, size_t old_index, GarbageCollector &gc) {
     assert(node->isLocked());
     if (node->getKeyLen(old_index) == BorderNode::key_len_has_suffix) { // [1] 競合するkey(k2)を含むBorderNodeにkey(k1)をinsertする際に新しいレイヤを作成する
         /*
@@ -93,7 +93,7 @@ static void handle_break_invariant(BorderNode *node, Key &key, size_t old_index,
 }
 
 // BorderNodeのkeyに対応する箇所にvalueを入れる
-static void insert_to_border(BorderNode *border, const Key &key, Value *value, GarbageCollector &gc) {
+void insert_to_border(BorderNode *border, const Key &key, Value *value, GarbageCollector &gc) {
     assert(border->isLocked());
     assert(!border->getSplitting());
     assert(!border->getInserting());
@@ -147,12 +147,12 @@ static void insert_to_border(BorderNode *border, const Key &key, Value *value, G
     border->setPermutation(permutation);
 }
 
-// static void insert_into_border(BorderNode *border, const Key &key, Value *value, GarbageCollector &gc) {}
+// void insert_into_border(BorderNode *border, const Key &key, Value *value, GarbageCollector &gc) {}
 
-// static size_t cut(size_t len) {}
+// size_t cut(size_t len) {}
 
 // InteriorNodeのparentを分割してparent1を作成する
-static void split_keys_among(InteriorNode *parent, InteriorNode *parent1, uint64_t slice, Node *node1, size_t node_index, std::optional<uint64_t> &k_prime) {
+void split_keys_among(InteriorNode *parent, InteriorNode *parent1, uint64_t slice, Node *node1, size_t node_index, std::optional<uint64_t> &k_prime) {
     assert(!parent->isNotFull());
     assert(parent->isLocked());
     assert(parent->getSplitting());
@@ -205,7 +205,7 @@ static void split_keys_among(InteriorNode *parent, InteriorNode *parent1, uint64
 
 // BorderNodeのkey-sliceのマップを作る
 // CHECK: これ使っている理由がよくわからん
-static void create_slice_table(BorderNode *const node, std::vector<std::pair<uint64_t, size_t>> &table, std::vector<uint64_t> &found) {
+void create_slice_table(BorderNode *const node, std::vector<std::pair<uint64_t, size_t>> &table, std::vector<uint64_t> &found) {
     Permutation permutation = node->getPermutation();
     assert(permutation.isFull());
     for (size_t i = 0; i < Node::ORDER - 1; i++) {
@@ -218,7 +218,7 @@ static void create_slice_table(BorderNode *const node, std::vector<std::pair<uin
 
 // BorderNodeにてSplitする位置を決める
 // CHECK: これの挙動がいまいちわかっていない
-static size_t split_point(uint64_t new_slice, const std::vector<std::pair<uint64_t, size_t>> &table, const std::vector<uint64_t> &found) {
+size_t split_point(uint64_t new_slice, const std::vector<std::pair<uint64_t, size_t>> &table, const std::vector<uint64_t> &found) {
     uint64_t min_slice = *std::min_element(found.begin(), found.end());
     uint64_t max_slice = *std::max_element(found.begin(), found.end());
     if (new_slice < min_slice) {    // 最小より小さいならsplit pointは1
@@ -246,7 +246,7 @@ static size_t split_point(uint64_t new_slice, const std::vector<std::pair<uint64
 }
 
 // BorderNodeのnodeを分割してnode1を作成する
-static void split_keys_among(BorderNode *node, BorderNode *node1, const Key &key, Value *value) {
+void split_keys_among(BorderNode *node, BorderNode *node1, const Key &key, Value *value) {
     Permutation permutation = node->getPermutation();
     assert(permutation.isFull());
     assert(node->isLocked());
@@ -343,7 +343,7 @@ static void split_keys_among(BorderNode *node, BorderNode *node1, const Key &key
     if (node1->getNext() != nullptr) node1->getNext()->setPrev(node1);
 }
 
-static InteriorNode *create_root_with_children(Node *left, uint64_t slice, Node *right) {
+InteriorNode *create_root_with_children(Node *left, uint64_t slice, Node *right) {
     assert(left->getIsRoot());
     assert(left->getParent() == nullptr);
     assert(right->getParent() == nullptr);
@@ -378,7 +378,7 @@ static InteriorNode *create_root_with_children(Node *left, uint64_t slice, Node 
 }
 
 // splitでleftの親にright(node1)をinsertするスペース(insertする場所はnodeの次)がある場合に呼ばれる
-static void insert_into_parent(InteriorNode *parent, Node *node1, uint64_t slice, size_t node_index) {
+void insert_into_parent(InteriorNode *parent, Node *node1, uint64_t slice, size_t node_index) {
     assert(parent->isNotFull());
     assert(parent->isLocked());
     assert(parent->getInserting());
@@ -397,7 +397,7 @@ static void insert_into_parent(InteriorNode *parent, Node *node1, uint64_t slice
     // assert(!parent->debug_has_skip());
 }
 
-static Node *split(Node *node, const Key &key, Value *value) {
+Node *split(Node *node, const Key &key, Value *value) {
     assert(node->isLocked());
     Node *node1 = new BorderNode{};
     node->setSplitting(true);
