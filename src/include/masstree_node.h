@@ -6,6 +6,7 @@
 #include <utility>
 #include <algorithm>
 #include <mutex>
+#include <optional>
 
 #include "atomic_wrapper.h"
 #include "masstree_version.h"

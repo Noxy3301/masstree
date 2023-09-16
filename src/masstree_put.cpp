@@ -62,9 +62,9 @@ void handle_break_invariant(BorderNode *node, Key &key, size_t old_index, Garbag
         BorderNode *n1 = new BorderNode{};                              // [2] 新しいBorderNodeの作成
         n1->setIsRoot(true);
         n1->setUpperLayer(node);
-        Value *k2_value = node->getLV(old_index).value;                 // [3] 適切なkey sliceの下にk2をinsertする
+        Value *k2_value = node->getLV(old_index).value;
         BigSuffix *k2_suffix_copy = new BigSuffix(*node->getKeySuffixes().get(old_index));
-        if (k2_suffix_copy->hasNext()) {
+        if (k2_suffix_copy->hasNext()) {                                // [3] 適切なkey sliceの下にk2をinsertする
             n1->setKeyLen(0, BorderNode::key_len_has_suffix);
             n1->setKeySlice(0, k2_suffix_copy->getCurrentSlice().slice);
             k2_suffix_copy->next();
@@ -151,7 +151,16 @@ void insert_to_border(BorderNode *border, const Key &key, Value *value, GarbageC
 
 // size_t cut(size_t len) {}
 
-// InteriorNodeのparentを分割してparent1を作成する
+/**
+ * @brief InteriorNodeのparentを分割して、parent1を作成する。
+ *
+ * @param parent     分割する元のInteriorNode
+ * @param parent1    分割後に新たに作成されるInteriorNode
+ * @param slice      挿入する新しいキー
+ * @param node1      挿入する新しい子ノード
+ * @param node_index node1とsliceを挿入する位置
+ * @param k_prime    分割後に上位ノードに引き上げるキー、関数内で更新される
+ */
 void split_keys_among(InteriorNode *parent, InteriorNode *parent1, uint64_t slice, Node *node1, size_t node_index, std::optional<uint64_t> &k_prime) {
     assert(!parent->isNotFull());
     assert(parent->isLocked());
