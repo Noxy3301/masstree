@@ -504,13 +504,39 @@ class BorderNode : public Node {
             }
             return std::make_tuple(NOTFOUND, LinkOrValue{}, 0);
         }
+
         // BorderNode内のキーの中で、最小のキーを返す。
         uint64_t lowestKey() const {
             Permutation permutation = getPermutation();
             return getKeySlice(permutation(0));
         }
 
-        // void connectPrevAndNext() const{}
+        // このBorderNodeを削除する前に呼び出す、前後のBorderNodeのリンクをつなぐ
+        void connectPrevAndNext() const {
+        RETRY_PREV_LOCK:
+            BorderNode *prev = getPrev();
+            if (prev != nullptr) {
+                prev->lock();
+                // prevをlockしているタイミングで消去/更新されていないことの確認
+                if (prev->getDeleted() || prev != getPrev()) {
+                    prev->unlock();
+                    goto RETRY_PREV_LOCK;
+                } else {
+                    BorderNode *next = getNext();
+                    prev->setNext(next);
+                    if (next != nullptr) {
+                        assert(!next->getDeleted());
+                        next->setPrev(prev);
+                    }
+                    prev->unlock();
+                }
+            } else {
+                // prev == nullptr
+                if (getNext() != nullptr) {
+                    getNext()->setPrev(nullptr);
+                }
+            }
+        }
 
         // 新しいキーを挿入するための適切な位置を検索する
         // 返り値は、挿入する位置と、その位置が再利用されるスロットであるかどうかのブール値
@@ -562,9 +588,22 @@ class BorderNode : public Node {
             setPermutation(Permutation::fromSorted(ORDER - 1));
         }
 
-        // void markKeyRemoved(uint8_t i){}
+        /**
+         * @brief キーを削除済みとしてマークする。
+         *        現在のキーの長さにkey_len_has_suffixの値(9)を加えることで、キーが削除されたことを示す。
+         * @param i 削除マークを付けるキーのインデックス
+         * @note 消去済みの場合、(10 <= len && len <= 18)となる
+         */
+        void markKeyRemoved(uint8_t i) {
+            uint8_t len = getKeyLen(i);
+            assert(1 <= len && len <= key_len_has_suffix);
+            setKeyLen(i, len + 9);
+        }
 
-        // bool isKeyRemoved(uint8_t i) const{}
+        bool isKeyRemoved(uint8_t i) const {
+            uint8_t len = getKeyLen(i);
+            return (10 <= len and len <= 18);
+        }
 
         size_t findNextLayerIndex(Node *next_layer) const {
             assert(this->isLocked());
