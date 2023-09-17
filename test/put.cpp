@@ -213,6 +213,8 @@ TEST(PutTest, split_keys_among_border) {
     borderNode1->setKeyLen(14, 3);
     borderNode1->setKeySlice(14, 114);
     borderNode1->setLV(14, LinkOrValue(&value));
+    // === before ===
+    // <borderNode1>
     // ┌─── Key: 110 ───┬─ key_len     : 1
     // │                └─ linkOrValue : Value(100)
     // ├─── Key: 110 ───┬─ key_len     : 2
@@ -245,6 +247,43 @@ TEST(PutTest, split_keys_among_border) {
     // │                └─ linkOrValue : Value(100)
     // └─── Key: 114 ───┬─ key_len     : 3
     //                  └─ linkOrValue : Value(100)
+
+    // === after ===
+    // <borderNode1>
+    // ┌─── Key: 110 ───┬─ key_len     : 1
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 110 ───┬─ key_len     : 2
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 110 ───┬─ key_len     : 3
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 110 ───┬─ key_len     : has_suffix
+    // │                │  suffix      : {0x0A0B'0000'0000'0000}, 2
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 111 ───┬─ key_len     : 1
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 111 ───┬─ key_len     : 2
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 111 ───┬─ key_len     : 3
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 111 ───┬─ key_len     : has_suffix
+    // │                │  suffix      : {0x0C0D'0000'0000'0000}, 2
+    // │                └─ linkOrValue : Value(100)
+    // <borderNode2>
+    // ┌─── Key: 113 ───┬─ key_len     : 1
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 113 ───┬─ key_len     : 2
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 113 ───┬─ key_len     : 3
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 113 ───┬─ key_len     : layer
+    // │                └─ linkOrValue : Link(next)
+    // ├─── Key: 114 ───┬─ key_len     : 1
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 114 ───┬─ key_len     : 2
+    // │                └─ linkOrValue : Value(100)
+    // ├─── Key: 114 ───┬─ key_len     : 3
+    // │                └─ linkOrValue : Value(100)
+
     borderNode1->lock();
     borderNode1->setSplitting(true);
     borderNode1->setPermutation(Permutation::fromSorted(15));
@@ -253,9 +292,11 @@ TEST(PutTest, split_keys_among_border) {
 
     Key key1({112, 0x0A0B'0000'0000'0000}, 2);
     split_keys_among(borderNode1, borderNode2, key1, &value);
-    EXPECT_EQ(borderNode1->getKeyLen(8), 9);
-    EXPECT_EQ(borderNode2->getKeySuffixes().get(1), nullptr);
+    EXPECT_EQ(borderNode1->getKeyLen(8), BorderNode::key_len_has_suffix);
+    EXPECT_EQ(borderNode1->getKeyLen(9), 0);
+    EXPECT_EQ(borderNode2->getKeyLen(3), BorderNode::key_len_layer);
 
+    // sortされていないBorderNodeを作成して正常にsplit pointを選定できるかのテスト
     BorderNode *unsorted = new BorderNode;
     for (size_t i = 0; i <= 7; i++) {
         unsorted->setKeyLen(i, i+1);
@@ -280,6 +321,7 @@ TEST(PutTest, split_keys_among_border) {
 }
 
 TEST(PutTest, split_point) {
+    // splitする際の適切な場所を決定するsplit_point関数のテスト
     BorderNode *node = new BorderNode;
     node->setKeyLen(0, 1);
     node->setKeySlice(0, 0x1111'1111'1111'1111);
@@ -312,11 +354,35 @@ TEST(PutTest, split_point) {
     node->setKeyLen(14, BorderNode::key_len_layer);
     node->setKeySlice(14, 0x4444'4444'4444'4444);
     node->setPermutation(Permutation::fromSorted(15));
-
+    // ┌─── Key: 0x1111'1111'1111'1111 ─── key_len  : 1
+    // ├─── Key: 0x1111'1111'1111'1111 ─── key_len  : 2
+    // ├─── Key: 0x1111'1111'1111'1111 ─── key_len  : 3
+    // ├─── Key: 0x1111'1111'1111'1111 ─── key_len  : 4
+    // ├─── Key: 0x1111'1111'1111'1111 ─── key_len  : layer
+    // ├─── Key: 0x2222'2222'2222'2222 ─── key_len  : 1
+    // ├─── Key: 0x2222'2222'2222'2222 ─── key_len  : 2
+    // ├─── Key: 0x2222'2222'2222'2222 ─── key_len  : 3
+    // ├─── Key: 0x2222'2222'2222'2222 ─── key_len  : 4
+    // ├─── Key: 0x2222'2222'2222'2222 ─── key_len  : layer
+    // ├─── Key: 0x4444'4444'4444'4444 ─── key_len  : 1
+    // ├─── Key: 0x4444'4444'4444'4444 ─── key_len  : 2
+    // ├─── Key: 0x4444'4444'4444'4444 ─── key_len  : 3
+    // ├─── Key: 0x4444'4444'4444'4444 ─── key_len  : 4
+    // └─── Key: 0x4444'4444'4444'4444 ─── key_len  : layer
     std::vector<std::pair<uint64_t, size_t>> table;
     std::vector<uint64_t> found;
 
     create_slice_table(node, table, found);
+    // <table>
+    // ┌───────────────────────┬─────────────┐
+    // │ key_slice             │ start_index │
+    // ├───────────────────────┼─────────────┤
+    // │ 0x1111'1111'1111'1111 │ 0           │
+    // │ 0x2222'2222'2222'2222 │ 5           │
+    // │ 0x4444'4444'4444'4444 │ 10          │
+    // └───────────────────────┴─────────────┘
+    // <found>
+    // {0x1111'1111'1111'1111, 0x2222'2222'2222'2222, 0x4444'4444'4444'4444}
     EXPECT_EQ(table[0], std::make_pair(static_cast<uint64_t>(0x1111'1111'1111'1111), static_cast<size_t>(0)));
     EXPECT_EQ(found[0], 0x1111'1111'1111'1111);
     EXPECT_EQ(table[1], std::make_pair(static_cast<uint64_t>(0x2222'2222'2222'2222), static_cast<size_t>(5)));
