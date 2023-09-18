@@ -106,10 +106,10 @@ std::pair<RootChange, Node*> delete_borderNode_in_remove(BorderNode *borderNode,
                 // hand-over-handの要領に則って下からunlockする
                 borderNode->connectPrevAndNext();
                 borderNode->setDeleted(true);
-                gc.add(n);
+                gc.add(borderNode);
                 borderNode->unlock();
                 parent->setDeleted(true);
-                gc.add(p);
+                gc.add(parent);
                 parent->unlock();
                 return std::make_pair(NewRoot, pull_up_node);
             } else {
@@ -195,8 +195,8 @@ FORWARD:
         assert(next != nullptr);    // splitが発生したのならnextが必ずあるはず
         while (!version.deleted && next != nullptr && key.getCurrentSlice().slice >= next->lowestKey()) {
             borderNode  = next;
-            version     = node->stableVersion();
-            next        = node->getNext();
+            version     = borderNode->stableVersion();
+            next        = borderNode->getNext();
         }
         borderNode->lock();
         goto FORWARD;
@@ -229,7 +229,7 @@ FORWARD:
         // [1]
         if (borderNode->getIsRoot() && permutation.getNumKeys() == 1 && key.cursor != 0) {
             // Layer0の時以外で、BorderNodeがRootで要素が1つだけの場合は、要素数は変化しない
-            handle_delete_layer_in_remove(key, gc);
+            handle_delete_layer_in_remove(borderNode, gc);
             return std::make_pair(LayerDeleted, nullptr);
         }
         // [2]
