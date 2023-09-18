@@ -84,4 +84,11 @@ TEST(PermutationTest, insert) {
 	EXPECT_EQ(permutation.getKeyIndex(5), 1);
 }
 
-// TEST(PermutationTest, removeIndex) {}
+TEST(PermutationTest, removeIndex) {
+	Permutation permutation = Permutation::from({3, 4, 5, 0, 1});
+	permutation.removeIndex(3);
+	permutation.removeIndex(5);
+	EXPECT_EQ(permutation(0), 4);
+	EXPECT_EQ(permutation(1), 0);
+	EXPECT_EQ(permutation.getNumKeys(), 3);
+}
