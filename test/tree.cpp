@@ -201,8 +201,8 @@ TEST(TreeTest, break_invariant_sliceLengthVariation) {
     // こちらも同様にhandle_break_invariantを呼び出して新しいレイヤを作成する
     Node *root = nullptr;
     GarbageCollector gc;
-    Key key1({0x1111111111111111, 0x2222222222222222}, 8);
-    Key key2({0x1111111111111111, 0x2222222222222222, 0x0A0B000000000000}, 2);
+    Key key1({0x1111'1111'1111'1111, 0x2222'2222'2222'2222}, 8);
+    Key key2({0x1111'1111'1111'1111, 0x2222'2222'2222'2222, 0x0A0B'0000'0000'0000}, 2);
     root = masstree_put(root, key1, new Value(1), gc).second;
     root = masstree_put(root, key2, new Value(2), gc).second;
     key2.reset();
@@ -222,7 +222,7 @@ TEST(TreeTest, sameSliceWithVaryingLastSliceSize) {
     Key key6({slice}, 6);
     Key key7({slice}, 7);
     Key key8({slice}, 8);
-    Key key9({slice, 0x0C0D000000000000}, 2);
+    Key key9({slice, 0x0C0D'0000'0000'0000}, 2);
     
     GarbageCollector gc;
     Node *root = nullptr;
@@ -243,9 +243,9 @@ TEST(TreeTest, sameSliceWithVaryingLastSliceSize) {
 
 TEST(TreeTest, updateDuplexKey) {
     // 同じキーの時内容を更新できるかのテスト
-    Key key1({0x1111111111111111, 0x2222222222222222, 0x0A0B000000000000}, 2);
-    Key key2({0x1111111111111111, 0x2222222222222222, 0x0C0D000000000000}, 2);
-    Key key3({0x1111111111111111, 0x2222222222222222, 0x0A0B000000000000}, 2);  // key1 == key2
+    Key key1({0x1111'1111'1111'1111, 0x2222'2222'2222'2222, 0x0A0B'0000'0000'0000}, 2);
+    Key key2({0x1111'1111'1111'1111, 0x2222'2222'2222'2222, 0x0C0D'0000'0000'0000}, 2);
+    Key key3({0x1111'1111'1111'1111, 0x2222'2222'2222'2222, 0x0A0B'0000'0000'0000}, 2);  // key1 == key2
     Node *root = nullptr;
     GarbageCollector gc;
     root = masstree_put(root, key1, new Value(1), gc).second;
@@ -258,4 +258,23 @@ TEST(TreeTest, updateDuplexKey) {
     EXPECT_EQ(*value, 4);
 }
 
-// TODO: layer_changeはremoveを実装してから
+TEST(TreeTest, layer_change) {
+    // layerの再構成が入っても正常に処理できるかのテスト
+    Node *root = nullptr;
+    GarbageCollector gc;
+    Key key1({0x1111'1111'1111'1111, 0x2222'2222'2222'2222, 0x5555'5555'5555'5555}, 8);
+    Key key2({0x1111'1111'1111'1111, 0x2222'2222'2222'2222, 0x3333'3333'3333'3333, 0x4444'4444'4444'4444}, 8);
+    root = masstree_put(root, key1, new Value(5), gc).second;
+    root = masstree_put(root, key2, new Value(4), gc).second;
+
+    key1.reset();
+    Value *value = masstree_get(root, key1);
+    ASSERT_EQ(*value, 5);
+
+    key2.reset();
+    root = remove_at_layer0(root, key2, gc);
+
+    key1.reset();
+    Value *value2 = masstree_get(root, key1);
+    ASSERT_EQ(*value2, 5);
+}
