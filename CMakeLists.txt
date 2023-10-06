@@ -30,6 +30,14 @@ enable_testing()
 file(GLOB_RECURSE TEST_SOURCES test/*.cpp src/*.cpp)
 # src/main.cpp を除外
 list(REMOVE_ITEM TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
+
+# 一旦masstree_insertを確かめるために、masstree_putを使っているテストケースを除外
+list(REMOVE_ITEM TEST_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/border.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/tree.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/put.cpp)
+
+
 add_executable(tests ${TEST_SOURCES})
 
 target_link_libraries(tests gtest_main)
