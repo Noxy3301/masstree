@@ -282,7 +282,7 @@ class InteriorNode : public Node {
         }
 
     private:
-        std::atomic<uint8_t> n_keys = 0;
+        std::atomic<uint8_t> n_keys{0};
         std::array<std::atomic<uint64_t>, ORDER - 1> key_slice = {};
         std::array<std::atomic<Node *>, ORDER> child = {}; 
 };
