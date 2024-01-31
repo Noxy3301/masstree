@@ -3,6 +3,8 @@
 #include "masstree_put.h"
 #include "masstree_get.h"
 #include "masstree_remove.h"
+#include "masstree_scan.h"
+#include "status.h"
 
 class Masstree {
     public:
@@ -43,7 +45,19 @@ class Masstree {
         }
 
 
-        void remove();
+        // Scan results will be stored in a vector of <Key, Value> pairs, provided as an argument.
+        void scan(Key &left_key,
+                  bool l_exclusive,
+                  Key &right_key,
+                  bool r_exclusive,
+                  std::vector<std::pair<Key, Value*>> &result) {
+            Node *root_ = root.load(std::memory_order_acquire);
+            Key current_key = left_key;
+            Status scan_status = Status::OK;
+            masstree_scan(root_, scan_status, current_key, left_key, l_exclusive, right_key, r_exclusive, result);
+            left_key.reset();
+            right_key.reset();
+        }
 
     private:
         std::atomic<Node *> root{nullptr};
