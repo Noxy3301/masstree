@@ -76,4 +76,23 @@ class Key {
         bool operator!=(const Key &right) const {
             return !(*this == right);
         }
+
+        bool operator<(const Key& right) const {
+            // 最小のサイズを取得して、それに基づいてスライスを比較
+            size_t minSize = std::min(slices.size(), right.slices.size());
+            for (size_t i = 0; i < minSize; i++) {
+                // スライスが異なる場合は、そのスライスに基づいて比較結果を返す
+                if (slices[i] != right.slices[i]) {
+                    return slices[i] < right.slices[i];
+                }
+            }
+
+            // すべてのスライスが等しい場合は、最後のスライスのサイズで比較
+            if (lastSliceSize != right.lastSliceSize) {
+                return lastSliceSize < right.lastSliceSize;
+            }
+
+            // スライスの数が異なる場合は、スライスの数が少ない方が小さいと判断
+            return slices.size() < right.slices.size();
+        }
 };
